@@ -11,11 +11,114 @@ import win32gui
 import win32con
 import time
 from win32api import GetSystemMetrics
+import os
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+import pickle
+from dotenv import load_dotenv
+import base64
+from email.mime.application import MIMEApplication
 
 # instantiate an MCP server client
 mcp = FastMCP("Calculator")
 
+
+# Load environment variables from .env file
+load_dotenv()
+
+# If modifying these scopes, delete the file token.pickle.
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/gmail.compose',
+    'https://www.googleapis.com/auth/gmail.modify'
+]
+
 # DEFINE TOOLS
+def get_gmail_service():
+    """Get or create Gmail API service."""
+    creds = None
+    # The file token.pickle stores the user's access and refresh tokens
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    
+    # If there are no (valid) credentials available, let the user log in
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+
+    return build('gmail', 'v1', credentials=creds)
+
+def create_message(sender, to, subject, message_text):
+    """Create a message for an email."""
+    message = MIMEText(message_text)
+    message['to'] = to
+    message['from'] = sender
+    message['subject'] = subject
+    return {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')}
+
+@mcp.tool()
+def send_email(emailto: str, subject: str, body: str) -> str:
+    """
+    Send email to a specific email address.
+    
+    Args:
+        emailto (str): The email address to send the email to
+        subject (str): The subject of the email
+        body (str): The body of the email
+    
+    Returns:
+        str: Status of the email sending operation
+    """
+
+    try:
+        # Get sender email from environment variables
+        sender_email = os.getenv('EMAIL_ADDRESS')
+        
+        if not sender_email:
+            raise ValueError("Missing email address. Please check your .env file.")
+        
+        # Format the phone number (remove any non-digits)
+        #phone_number = ''.join(filter(str.isdigit, phone_number))
+        
+    
+        # Get Gmail service
+        service = get_gmail_service()
+        
+        # Create the message
+        message = create_message(
+            sender_email,
+            emailto,
+            subject,
+            body
+        )
+        
+        # Send the message
+        sent_message = service.users().messages().send(
+            userId='me',
+            body=message
+        ).execute()
+        
+        #print(f"Message sent successfully to {phone_number}@tmomail.net")
+        return f"Email sent successfully to {emailto}"
+        
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return f"Error sending email: {str(e)}"
+
+
+
 
 #addition tool
 @mcp.tool()
@@ -154,6 +257,36 @@ def fibonacci_numbers(n: int) -> list:
 
 
 @mcp.tool()
+def send_email(emailto: str, subject: str, body: str) -> dict:
+    """Send an email"""
+    print(f"Sending email to {emailto} with subject {subject} and body {body}")
+    return "Email sent successfully"
+
+
+@mcp.tool()
+async def paint_the_number_in_rectangle(number: str, x1: int, y1: int, x2: int, y2: int) -> dict:
+    """Paint the number in the rectangle"""
+    print(f"Painting the number {number} in the rectangle with coordinates ({x1}, {y1}, {x2}, {y2})")
+    
+    result = await open_paint()
+
+    # Wait longer for Paint to be fully maximized
+    time.sleep(1)
+
+    # Draw a rectangle
+    result = await draw_rectangle(x1, y1, x2, y2)
+    
+    #print(result.content[0].text)
+
+    time.sleep(1)
+
+    # Draw rectangle and add text
+    result = await add_text_in_paint(str(number))
+
+    return "Number painted successfully"
+
+
+@mcp.tool()
 async def draw_rectangle(x1: int, y1: int, x2: int, y2: int) -> dict:
     """Draw a rectangle in Paint from (x1,y1) to (x2,y2)"""
     global paint_app
@@ -177,7 +310,7 @@ async def draw_rectangle(x1: int, y1: int, x2: int, y2: int) -> dict:
         # Ensure Paint window is active
         if not paint_window.has_focus():
             paint_window.set_focus()
-            time.sleep(0.2)
+            time.sleep(0.5)
         
         # Select pencil tool first
         # paint_window.type_keys('TP')
@@ -185,7 +318,7 @@ async def draw_rectangle(x1: int, y1: int, x2: int, y2: int) -> dict:
         
         # Then select rectangle shape tool at specific coordinates
         paint_window.click_input(coords=(536, 82))
-        time.sleep(0.2)
+        time.sleep(1)
         
         # Get the canvas area
         canvas = paint_window.child_window(class_name='MSPaintView')

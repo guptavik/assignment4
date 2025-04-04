@@ -14,7 +14,7 @@ load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-max_iterations = 3
+max_iterations = 5
 last_response = None
 iteration = 0
 iteration_response = []
@@ -51,6 +51,41 @@ def reset_state():
     iteration = 0
     iteration_response = []
 
+# async def paint_the_number_in_rectangle(session: ClientSession, number: int, x1: int, y1: int, x2: int, y2: int):
+#     """Paint the number in the rectangle"""
+#     print(f"Painting the number {number} in the rectangle with coordinates ({x1}, {y1}, {x2}, {y2})")
+    
+#     result = await session.call_tool("open_paint")
+#     print(result.content[0].text)
+
+#     # Wait longer for Paint to be fully maximized
+#     await asyncio.sleep(1)
+
+#     # Draw a rectangle
+#     result = await session.call_tool(
+#         "draw_rectangle",
+#         arguments={
+#             "x1": x1,
+#             "y1": y1,
+#             "x2": x2,
+#             "y2": y2
+#         }
+#     )
+    
+#     print(result.content[0].text)
+
+#     # Draw rectangle and add text
+#     result = await session.call_tool(
+#         "add_text_in_paint",
+#         arguments={
+#             "text": str(number)
+#         }
+#     )
+#     print(result.content[0].text)
+
+#     return "Number painted successfully"
+
+
 async def main():
     reset_state()  # Reset at the start of main
     print("Starting main execution...")
@@ -80,10 +115,6 @@ async def main():
                 
                 try:
                     # First, let's inspect what a tool object looks like
-                    # if tools:
-                    #     print(f"First tool properties: {dir(tools[0])}")
-                    #     print(f"First tool example: {tools[0]}")
-                    
                     tools_description = []
                     for i, tool in enumerate(tools):
                         try:
@@ -119,30 +150,33 @@ async def main():
                 
                 system_prompt = f"""You are a math agent solving problems in iterations. You have access to various mathematical tools.
 
-Available tools:
-{tools_description}
+                    Available tools:
+                    {tools_description}
 
-You must respond with EXACTLY ONE line in one of these formats (no additional text):
-1. For function calls:
-   FUNCTION_CALL: function_name|param1|param2|...
-   
-2. For final answers:
-   FINAL_ANSWER: [number]
+                    You must respond with EXACTLY ONE line in one of these formats (no additional text):
+                    1. For function calls:
+                    FUNCTION_CALL: function_name|param1|param2|...
+                    
+                    2. For final answers:
+                    FINAL_ANSWER: [number]
 
-Important:
-- When a function returns multiple values, you need to process all of them
-- Only give FINAL_ANSWER when you have completed all necessary calculations
-- Do not repeat function calls with the same parameters
+                    Important:
+                    - When a function returns multiple values, you need to process all of them
+                    - Only give FINAL_ANSWER when you have completed all necessary calculations
+                    - Do not repeat function calls with the same parameters
 
-Examples:
-- FUNCTION_CALL: add|5|3
-- FUNCTION_CALL: strings_to_chars_to_int|INDIA
-- FINAL_ANSWER: [42]
+                    Examples:
+                    - FUNCTION_CALL: add|5|3
+                    - FUNCTION_CALL: strings_to_chars_to_int|INDIA
+                    - FUNCTION_CALL: paint_the_number_in_rectangle|INDIA|780|380|1140|700
+                    - FUNCTION_CALL: send_email|vikas.gupta@pillir.io|Hello|Hello from the other side
+                    - FINAL_ANSWER: [42]
 
-DO NOT include any explanations or additional text.
-Your entire response should be a single line starting with either FUNCTION_CALL: or FINAL_ANSWER:"""
+                    DO NOT include any explanations or additional text.
+                    Your entire response should be a single line starting with either FUNCTION_CALL: or FINAL_ANSWER:"""
 
-                query = """Find the ASCII values of characters in INDIA and then return sum of exponentials of those values. """
+                #query = """Find the ASCII values of characters in INDIA and then return sum of exponentials of those values. """
+                query = """Find the ASCII values of characters in INDIA and then get sum of exponentials of those values and paint the number in the rectangle with coordinates (780, 380, 1140, 700) in paint. Send an email to vikas.gupta@pillir.io with the subject "Final Answer" and the body includes the number. """
                 print("Starting iteration loop...")
                 
                 # Use global iteration variables
@@ -268,32 +302,32 @@ Your entire response should be a single line starting with either FUNCTION_CALL:
 
                     elif response_text.startswith("FINAL_ANSWER:"):
                         print("\n=== Agent Execution Complete ===")
-                        result = await session.call_tool("open_paint")
-                        print(result.content[0].text)
+                        # result = await session.call_tool("open_paint")
+                        # print(result.content[0].text)
 
-                        # Wait longer for Paint to be fully maximized
-                        await asyncio.sleep(1)
+                        # # Wait longer for Paint to be fully maximized
+                        # await asyncio.sleep(1)
 
-                        # Draw a rectangle
-                        result = await session.call_tool(
-                            "draw_rectangle",
-                            arguments={
-                                "x1": 780,
-                                "y1": 380,
-                                "x2": 1140,
-                                "y2": 700
-                            }
-                        )
-                        print(result.content[0].text)
+                        # # Draw a rectangle
+                        # result = await session.call_tool(
+                        #     "draw_rectangle",
+                        #     arguments={
+                        #         "x1": 780,
+                        #         "y1": 380,
+                        #         "x2": 1140,
+                        #         "y2": 700
+                        #     }
+                        # )
+                        # print(result.content[0].text)
 
-                        # Draw rectangle and add text
-                        result = await session.call_tool(
-                            "add_text_in_paint",
-                            arguments={
-                                "text": response_text
-                            }
-                        )
-                        print(result.content[0].text)
+                        # # Draw rectangle and add text
+                        # result = await session.call_tool(
+                        #     "add_text_in_paint",
+                        #     arguments={
+                        #         "text": response_text
+                        #     }
+                        # )
+                        # print(result.content[0].text)
                         break
 
                     iteration += 1
